@@ -5,5 +5,5 @@ Here you can find me:
 * Discord: doesnm#2727 ([Guild](https://discord.gg/3WD4sbbMkn))
 * GitHub: [doesnmisclown](https://github.com/doesnmisclown)
 * Matrix: [@juandragop:matrix.org](https://matrix.to/#/@juandragop:matrix.org)
-* XMPP: juandragop@doesnm.cc (Conference: general@muc.doesnm.cc)
+* XMPP: [juandragop@doesnm.cc](xmpp:juandragop@doesnm.cc) ([Conference](xmpp:general@muc.doesnm.cc?join))
 * SSH chat(at port 2022): `ssh doesnm.cc -p 2022`
