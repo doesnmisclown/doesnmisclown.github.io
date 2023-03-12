@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <script src="olm.js"></script>
+  <script src="browser-matrix.min.js"></script>
+  <title>Matrix</title>
+</head>
+<body>
+  <div id="app">
+    <a>Загрузка...</a>
+  </div>
+  <style>
+    html, body, #app {
+      background-color: #223;
+      height: 100%;
+    }
+    a {
+      color: #eee;
+    }
+    input {
+      border: 0;
+      outline: 0;
+      background-color: #223;
+      color: #eee;
+      text-align: center;
+      box-shadow: inset 0px 0px 1px #eee;
+    }
+    input::placeholder {
+      color: #eee;
+    }
+    button {
+      border: none;
+      outline: none;
+      background-color: #223;
+      color: #eee;
+      box-shadow: inset 0px 0px 1px #eee;
+    }
+    #loginForm {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      height: 100%;
+    }
+  </style>
+  <script>
+    const app = document.querySelector("#app")
+    const messages = {}
+    let currentRoom = "";
+    const AppName = "MyClient"
+    const setApp = child => {
+      app.innerHTML = child;
+    }
+    const addApp = child => {
+      app.innerHTML += child + "<br>"
+    }
+    const loginHandler = () => {
+        const button = document.querySelector("#loginButton")
+        button.innerText = "Loading...";
+        button.enabled = false;
+        const login = document.querySelector("#loginBox").value;
+        const password = document.querySelector("#passwordBox").value;
+        client.login("m.login.password", {
+          user: login,
+          password: password
+        }).then(res => {
+          console.log(res)
+          localStorage.setItem("access_token",res.access_token)
+          localStorage.setItem("user_id",res.user_id)
+          location.reload()
+        })
+        .catch(e => {
+          button.enabled = true;
+          button.innerText = "Enter the matrix";
+          alert(e.message)
+        })
+      }
+    const setLoginPage = () => {
+      setApp(`
+      <div id="loginForm">
+      <input type="text" placeholder="Login" id="loginBox"></br>
+      <input type="password" placeholder="password" id="passwordBox"></br>
+      <button id="loginButton" onclick="loginHandler()">Enter the matrix</button>
+      </div>
+      `)
+    }
+    const client = matrixcs.createClient({
+      baseUrl: "https://matrix.org",
+      accessToken: localStorage.getItem("access_token"),
+      userId: localStorage.getItem("user_id"),
+      deviceId: AppName
+    })
+    client.once("sync", (state,prevState,res) => {
+      if(state == "PREPARED"){
+       setRoomList()
+      }
+    })
+   const setRoomList = () => {
+     setApp("")
+     currentRoom = ""
+     const rooms = client.getRooms()
+      rooms.forEach(r => {
+        addApp(`<a onclick="setActiveRoom('${r.roomId}')">${r.name}</a>`)
+      })
+   }
+   const setActiveRoom = id => {
+     currentRoom = id
+     setApp("")
+      const room = client.getRoom(id);
+      addApp(`
+      <a onclick="setRoomList()">Room List</a><br>
+      <a>${room.name}</a>
+      <input type="text" id="messageBox">
+      <a onclick="client.sendEvent('${room.roomId}','m.room.message',{msgtype:'m.text',body: document.querySelector('#messageBox').value});document.querySelector('#messageBox').value = ''">Send</a>
+      `)
+      if(messages[roomId]) messages[roomId].forEach(event => client.emit(`${AppName}.message`))
+   }
+    client.on("Room.timeline", (event) => {
+      const roomId = event.getRoomId()
+      if(event.getType() != "m.room.message") return;
+      if(!messages[roomId]) messages[roomId] = []
+      messages[roomId].push(event)
+      client.emit(`${AppName}.message`,event)
+    })
+    client.on(`${AppName}.message`, event => {
+      if(event.getRoomId() == currentRoom){
+      addApp(`<a>${event.getSender()}: ${event.getContent().body}</a>`)
+      }
+    })
+    window.onload = async () => {
+    if(!localStorage.getItem("access_token")) return setLoginPage()
+    await client.initCrypto()
+    await client.startClient({initialSyncLimit: 10 });
+    }
+  </script>
+</body>
+</html>
