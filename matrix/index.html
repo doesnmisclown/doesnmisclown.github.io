@@ -64,6 +64,17 @@
     const addApp = child => {
       app.innerHTML += child + "<br>"
     }
+    const formatMessage = text => {
+      let formatted_body = text
+      .replace(/\</gm,"&lt;")
+      .replace(/\>/gm,"&gt;")
+      .replace(/^### (.*$)/gim, '<h3>$1</h3>') 
+		  .replace(/^## (.*$)/gim, '<h2>$1</h2>')
+		  .replace(/^# (.*$)/gim, '<h1>$1</h1>')
+		  .replace(/\*\*(.*)\*\*/gim, '<strong>$1</strong>')
+		  .replace(/\*(.*)\*/gim, '<em>$1</em>');
+      return { msgtype: "m.text", body: text, formatted_body, format: "org.matrix.custom.html" }
+    }
     const setSelectAccountsPage = () => {
       setApp(`
       <div class="center">
@@ -93,8 +104,9 @@
       client.emit(`${AppName}.message`,event)
     })
     client.on(`${AppName}.message`, event => {
+      if(!event) return;
       if(event.getRoomId() == currentRoom){
-      addApp(`<a>${event.getSender().split(":")[0]}: ${event.getContent().body}</a>`)
+      addApp(`<a>${event.getSender().split(":")[0]}: ${(event.getContent().formatted_body || event.getContent().body) }</a>`)
       }
     })
     client.initCrypto()
@@ -142,6 +154,11 @@
         addApp(`<a onclick="setActiveRoom('${r.roomId}')">${r.name}</a>`)
       })
    }
+   const sendMessageToActiveRoom = () => {
+     const msgbox = document.querySelector("#messageBox")
+     client.sendEvent(currentRoom,"m.room.message",formatMessage(msgbox.value))
+     msgbox.value = "";
+   }
    const setActiveRoom = id => {
      currentRoom = id
      setApp("")
@@ -150,9 +167,11 @@
       <a onclick="setRoomList()">Room List</a><br>
       <a>${room.name}</a>
       <input type="text" id="messageBox">
-      <a onclick="client.sendEvent('${room.roomId}','m.room.message',{msgtype:'m.text',body: document.querySelector('#messageBox').value});document.querySelector('#messageBox').value = ''">Send</a>
+      <a onclick="sendMessageToActiveRoom()">-&gt;</a>
       `)
-      if(messages[roomId]) messages[roomId].forEach(event => client.emit(`${AppName}.message`))
+      if(messages[id]) messages[id].forEach(event => {
+        addApp(`<a>${event.getSender().split(":")[0]}: ${formatMessage(event.getContent().body).formatted_body}</a>`)
+      })
    }
     
     window.onload = async () => {
