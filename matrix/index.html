@@ -38,7 +38,7 @@
       color: #eee;
       box-shadow: inset 0px 0px 1px #eee;
     }
-    #loginForm {
+    .center {
       display: flex;
       flex-direction: column;
       justify-content: center;
@@ -51,11 +51,55 @@
     const messages = {}
     let currentRoom = "";
     const AppName = "MyClient"
+    let accounts = localStorage.getItem("accounts")
+    if(!accounts) accounts = "[]"
+      accounts = JSON.parse(accounts)
+    let client = matrixcs.createClient({
+      baseUrl: "https://matrix.org",
+      deviceId: AppName
+    })
     const setApp = child => {
       app.innerHTML = child;
     }
     const addApp = child => {
       app.innerHTML += child + "<br>"
+    }
+    const setSelectAccountsPage = () => {
+      setApp(`
+      <div class="center">
+      <a>Выберите аккаунт</a><br>
+      ${accounts.map(m => `<a onclick="selectAccountHandler('${m.user_id}','${m.access_token}')">${m.user_id}</a><br>`)}
+      <button onclick="setLoginPage()">Добавить аккаунт</button>
+      </div>
+      `)
+    }
+    const selectAccountHandler = (user_id,access_token) => {
+      client = matrixcs.createClient({
+        baseUrl: "https://matrix.org",
+        userId: user_id,
+        accessToken: access_token,
+        deviceId: AppName
+      })
+      client.once("sync", (state,prevState,res) => {
+      if(state == "PREPARED"){
+       setRoomList()
+      }
+    })
+    client.on("Room.timeline", (event) => {
+      const roomId = event.getRoomId()
+      if(event.getType() != "m.room.message") return;
+      if(!messages[roomId]) messages[roomId] = []
+      messages[roomId].push(event)
+      client.emit(`${AppName}.message`,event)
+    })
+    client.on(`${AppName}.message`, event => {
+      if(event.getRoomId() == currentRoom){
+      addApp(`<a>${event.getSender().split(":")[0]}: ${event.getContent().body}</a>`)
+      }
+    })
+    client.initCrypto()
+    client.startClient({initialSyncLimit: 10 })
+    setApp(`<div class="center"><a>Загрузка...</a></dev>`)
     }
     const loginHandler = () => {
         const button = document.querySelector("#loginButton")
@@ -68,36 +112,28 @@
           password: password
         }).then(res => {
           console.log(res)
-          localStorage.setItem("access_token",res.access_token)
-          localStorage.setItem("user_id",res.user_id)
+          accounts.push({
+            user_id: res.user_id,
+            access_token: res.access_token
+          })
+          localStorage.setItem("accounts",JSON.stringify(accounts))
           location.reload()
         })
         .catch(e => {
           button.enabled = true;
-          button.innerText = "Enter the matrix";
+          button.innerText = "Войти в матрицу";
           alert(e.message)
         })
       }
     const setLoginPage = () => {
       setApp(`
-      <div id="loginForm">
+      <div class="center">
       <input type="text" placeholder="Login" id="loginBox"></br>
       <input type="password" placeholder="password" id="passwordBox"></br>
-      <button id="loginButton" onclick="loginHandler()">Enter the matrix</button>
+      <button id="loginButton" onclick="loginHandler()">Войти в матрицу</button>
       </div>
       `)
     }
-    const client = matrixcs.createClient({
-      baseUrl: "https://matrix.org",
-      accessToken: localStorage.getItem("access_token"),
-      userId: localStorage.getItem("user_id"),
-      deviceId: AppName
-    })
-    client.once("sync", (state,prevState,res) => {
-      if(state == "PREPARED"){
-       setRoomList()
-      }
-    })
    const setRoomList = () => {
      setApp("")
      currentRoom = ""
@@ -118,22 +154,9 @@
       `)
       if(messages[roomId]) messages[roomId].forEach(event => client.emit(`${AppName}.message`))
    }
-    client.on("Room.timeline", (event) => {
-      const roomId = event.getRoomId()
-      if(event.getType() != "m.room.message") return;
-      if(!messages[roomId]) messages[roomId] = []
-      messages[roomId].push(event)
-      client.emit(`${AppName}.message`,event)
-    })
-    client.on(`${AppName}.message`, event => {
-      if(event.getRoomId() == currentRoom){
-      addApp(`<a>${event.getSender()}: ${event.getContent().body}</a>`)
-      }
-    })
+    
     window.onload = async () => {
-    if(!localStorage.getItem("access_token")) return setLoginPage()
-    await client.initCrypto()
-    await client.startClient({initialSyncLimit: 10 });
+    setSelectAccountsPage()
     }
   </script>
 </body>
