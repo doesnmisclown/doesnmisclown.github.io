@@ -16,6 +16,7 @@
     html, body, #app {
       background-color: #223;
       height: 100%;
+      max-height: 100%;
     }
     a {
       color: #eee;
@@ -30,6 +31,7 @@
     }
     input::placeholder {
       color: #eee;
+      
     }
     button {
       border: none;
@@ -44,6 +46,23 @@
       justify-content: center;
       align-items: center;
       height: 100%;
+    }
+    #messages {
+      height: 100%;
+      position: relative;
+    }
+    #messageBlock {
+      position: fixed;
+      bottom: 0;
+      width: 100%;
+      height: 20px;
+      display: flex;
+    }
+    #messageBox {
+      width: 100%;
+    }
+    #sendButton {
+      width: 20px;
     }
   </style>
   <script>
@@ -106,7 +125,13 @@
     client.on(`${AppName}.message`, event => {
       if(!event) return;
       if(event.getRoomId() == currentRoom){
-      addApp(`<a>${event.getSender().split(":")[0]}: ${(event.getContent().formatted_body || event.getContent().body) }</a>`)
+      const messagesEl = document.querySelector("#messages")
+      messagesEl.innerHTML = "";
+      messages[event.getRoomId()].forEach(event => {
+        messagesEl.innerHTML += `
+        <a>${event.getSender().split(":")[0]}: ${formatMessage(event.getContent().body).formatted_body}</a><br>
+        `
+      })
       }
     })
     client.initCrypto()
@@ -164,13 +189,19 @@
      setApp("")
       const room = client.getRoom(id);
       addApp(`
-      <a onclick="setRoomList()">Room List</a><br>
+      <a onclick="setRoomList()">&lt;-</a><br>
       <a>${room.name}</a>
+      <div id="messages"></div>
+      <div id="messageBlock">
       <input type="text" id="messageBox">
-      <a onclick="sendMessageToActiveRoom()">-&gt;</a>
+      <a id="sendButton" onclick="sendMessageToActiveRoom()">-&gt;</a>
+      </div>
       `)
+      const messagesEl = document.querySelector("#messages")
       if(messages[id]) messages[id].forEach(event => {
-        addApp(`<a>${event.getSender().split(":")[0]}: ${formatMessage(event.getContent().body).formatted_body}</a>`)
+        messagesEl.innerHTML += `
+        <a>${event.getSender().split(":")[0]}: ${formatMessage(event.getContent().body).formatted_body}</a><br>
+        `
       })
    }
     
