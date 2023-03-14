@@ -1,0 +1,8 @@
+{
+  "packs": [
+    "Er2Pack.json",
+    "ufoludek_hate.json",
+    "ChineseCubes.json"
+  ],
+  "homeserver_url": "https://fb.doesnm.cc"
+}
